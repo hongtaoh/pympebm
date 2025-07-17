@@ -1,0 +1,13 @@
+2025-07-16 18:46:49,423 - INFO - Running conjugate priors for file: j200_r0.25_Esn_kjOrdinalUniform_xnjNonNormal_m6
+2025-07-16 18:46:49,425 - INFO - Number of biomarkers: 10
+2025-07-16 18:46:50,655 - INFO - Iteration 20/200, Acceptance Ratio: 40.00%, Log Likelihood: -5765.3182, Current Accepted Order: dict_values([1, 4, 2, 5, 9, 3, 10, 6, 7, 8]), 
+2025-07-16 18:46:51,830 - INFO - Iteration 40/200, Acceptance Ratio: 30.00%, Log Likelihood: -5609.8235, Current Accepted Order: dict_values([1, 2, 3, 5, 6, 4, 10, 7, 9, 8]), 
+2025-07-16 18:46:53,017 - INFO - Iteration 60/200, Acceptance Ratio: 21.67%, Log Likelihood: -5526.4453, Current Accepted Order: dict_values([1, 2, 3, 5, 6, 4, 8, 7, 9, 10]), 
+2025-07-16 18:46:54,207 - INFO - Iteration 80/200, Acceptance Ratio: 16.25%, Log Likelihood: -5526.4453, Current Accepted Order: dict_values([1, 2, 3, 5, 6, 4, 8, 7, 9, 10]), 
+2025-07-16 18:46:55,402 - INFO - Iteration 100/200, Acceptance Ratio: 15.00%, Log Likelihood: -5482.4362, Current Accepted Order: dict_values([1, 2, 3, 5, 4, 6, 7, 8, 9, 10]), 
+2025-07-16 18:46:56,580 - INFO - Iteration 120/200, Acceptance Ratio: 12.50%, Log Likelihood: -5482.4362, Current Accepted Order: dict_values([1, 2, 3, 5, 4, 6, 7, 8, 9, 10]), 
+2025-07-16 18:46:57,750 - INFO - Iteration 140/200, Acceptance Ratio: 10.71%, Log Likelihood: -5482.4362, Current Accepted Order: dict_values([1, 2, 3, 5, 4, 6, 7, 8, 9, 10]), 
+2025-07-16 18:46:58,932 - INFO - Iteration 160/200, Acceptance Ratio: 10.00%, Log Likelihood: -5464.7527, Current Accepted Order: dict_values([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), 
+2025-07-16 18:47:00,108 - INFO - Iteration 180/200, Acceptance Ratio: 8.89%, Log Likelihood: -5464.7527, Current Accepted Order: dict_values([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), 
+2025-07-16 18:47:01,285 - INFO - Iteration 200/200, Acceptance Ratio: 8.00%, Log Likelihood: -5464.7527, Current Accepted Order: dict_values([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), 
+2025-07-16 18:47:02,336 - INFO - Results saved to algo_results/conjugate_priors/results/j200_r0.25_Esn_kjOrdinalUniform_xnjNonNormal_m6_results.json
