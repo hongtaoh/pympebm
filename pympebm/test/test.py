@@ -1,4 +1,5 @@
 from pympebm import run_mpebm, get_params_path
+from pympebm.mp_utils import get_unique_rows
 import os
 import json 
 import re 
@@ -60,31 +61,30 @@ if __name__=='__main__':
             order_with_highest_ll = results['order_with_highest_ll']
             # Sort by value, the sorted result will be a list of tuples
             partial_ordering = [k for k, v in sorted(order_with_highest_ll.items(), key=lambda item: item[1])]
-            partial_ordering = np.array([str2int[bm] for bm in partial_ordering])
+            partial_ordering = [str2int[bm] for bm in partial_ordering]
             estimated_partial_rankings.append(partial_ordering)
 
         # ridged arrays
-        estimated_partial_rankings = np.array(estimated_partial_rankings, dtype='object')
+        padded_partial_rankings = get_unique_rows(estimated_partial_rankings)
         for mp_method in ['Pairwise', 'Mallows', 'BT', 'PL']:
-            if mp_method == 'PL':
-                run_mpebm(
-                    partial_rankings=estimated_partial_rankings,
-                    bm2int=str2int,
-                    mp_method=mp_method,
-                    save_results=True,
-                    data_file= os.path.join(data_dir, data_file),
-                    output_dir=OUTPUT_DIR,
-                    output_folder=mp_method,
-                    n_iter=500,
-                    n_shuffle=2,
-                    burn_in=10,
-                    thinning=1,
-                    true_order_dict=true_order_dict,
-                    true_stages = true_stages,
-                    skip_heatmap=True,
-                    skip_traceplot=True,
-                    save_details=False,
-                    seed = 53
+            run_mpebm(
+                partial_rankings=padded_partial_rankings,
+                bm2int=str2int,
+                mp_method=mp_method,
+                save_results=True,
+                data_file= os.path.join(data_dir, data_file),
+                output_dir=OUTPUT_DIR,
+                output_folder=mp_method,
+                n_iter=500,
+                n_shuffle=2,
+                burn_in=10,
+                thinning=1,
+                true_order_dict=true_order_dict,
+                true_stages = true_stages,
+                skip_heatmap=True,
+                skip_traceplot=True,
+                save_details=False,
+                seed = 53
                 )
 
         run_mpebm(

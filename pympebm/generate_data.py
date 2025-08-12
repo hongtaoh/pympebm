@@ -511,6 +511,7 @@ def generate(
     mp_method: Optional[str] = "Mallows", # 'PL', 'BT', 'Pairwise'
     sample_count: Optional[int] = 1000 , # how many samples of combined orderings to obtain when calculating certainty
     mcmc_iterations: Optional[int] = 100,
+    pl_best:bool=True # in PL framework, sample a random one or through MCMC to get the best one
 ) -> Dict[str, Dict[str, int]]:
     """
     Generate multiple datasets for different experimental configurations.
@@ -605,17 +606,27 @@ def generate(
                     certainty = None
                     conflict2 = None 
                     fixed_biomarker_order = True # if mixed pathology, we have to use the order in `params_to_use`
-                    combined_ordering, padded_ordering_array = mp_utils.get_combined_order(biomarkers_int, low_num, high_num, low_length, high_length, rng=sub_rng, method=mp_method, mcmc_iterations=mcmc_iterations)
+                    padded_ordering_array = mp_utils.get_padded_partial_orders(
+                        biomarkers_int=biomarkers_int, low_num=low_num, 
+                        low_length=low_length, high_length=high_length, 
+                        high_num=high_num, rng=sub_rng)
+                    
+                    combined_ordering = mp_utils.get_combined_order(
+                        padded_partial_orders=padded_ordering_array, 
+                        rng=sub_rng, method=mp_method, mcmc_iterations=mcmc_iterations, pl_best=pl_best)
+                    
                     new_params = mp_utils.get_final_params(params, combined_ordering, padded_ordering_array, int2str)
                     if sample_count > 1:
                         conflict = mp_utils.compute_conflict(padded_ordering_array)
                         conflict2 = mp_utils.compute_conflict2(padded_ordering_array)
                     if mp_method == 'PL':
-                        PL = mp_utils.PlackettLuce(ordering_array=padded_ordering_array, rng=sub_rng, sample_count=sample_count)
+                        PL = mp_utils.PlackettLuce(ordering_array=padded_ordering_array, rng=sub_rng, 
+                                                   sample_count=sample_count, pl_best=pl_best)
                         if sample_count > 1:
                             certainty = PL.compute_certainty()
                     else:
-                        mcmc_sampler = mp_utils.MCMC(ordering_array=padded_ordering_array, method=mp_method, sample_count=sample_count, rng=sub_rng, iterations=mcmc_iterations)
+                        mcmc_sampler = mp_utils.MCMC(ordering_array=padded_ordering_array, method=mp_method, 
+                                                     sample_count=sample_count, rng=sub_rng, mcmc_iterations=mcmc_iterations)
                         if sample_count > 1:
                             certainty = mcmc_sampler.compute_certainty()
                     true_order_and_stages_dict[filename]['n_partial_rankings'] = len(padded_ordering_array)

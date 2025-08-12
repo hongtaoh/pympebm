@@ -1,0 +1,3 @@
+2025-08-12 00:33:15,459 - INFO - Running j200_r0.25_Esn_kjOrdinalDM_xnjNormal_m2
+2025-08-12 00:33:15,461 - INFO - Number of biomarkers: 13
+2025-08-12 00:33:15,474 - ERROR - Error in Metropolis-Hastings algorithm: 'MCMC' object has no attribute 'obtain_energy_pairwise'

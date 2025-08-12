@@ -66,13 +66,14 @@ if __name__ == '__main__':
                     seed=53,
                     keep_all_cols = False,
                     fixed_biomarker_order = False, # to randomize things
-                    mp_method='PL',
+                    mp_method='Pairwise',
                     sample_count = 300,
                     mcmc_iterations = 300,
                     low_num=2, # lowest possible number of n_partial_rankings
                     high_num=4,
                     low_length=5, # shortest possible partial ranking length
-                    high_length=14 # longest possible partial ranking length
+                    high_length=14, # longest possible partial ranking length
+                    pl_best=True
                 )
         all_exp_dicts.append(bm_et_dict)
 
@@ -98,8 +99,9 @@ if __name__ == '__main__':
             # obtain the new partial params
             partial_params = {}
             for bm_int in partial_ordering:
-                bm = int2str[bm_int]
-                partial_params[bm] = params[bm]
+                if bm_int in int2str:
+                    bm = int2str[bm_int]
+                    partial_params[bm] = params[bm]
             
             generate(
                 mixed_pathology=False,

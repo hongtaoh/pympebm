@@ -5,7 +5,7 @@ import logging
 import pympebm.mp_utils as mp_utils
 
 def metropolis_hastings(
-        partial_rankings: List[List[int]],
+        partial_rankings: np.ndarray,
         mp_method: str,
         data_matrix: np.ndarray,
         diseased_arr: np.ndarray,

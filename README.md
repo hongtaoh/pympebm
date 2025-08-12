@@ -62,3 +62,6 @@ To run `gen.py` first. Then to generate partial ordering datasets. `gen_partial.
   
 - 2025-08-10 (V 0.3.3)
     - Use numpy and numba (whenever possible) in `mp_utils.py`.
+
+- 2025-08-11 (V 0.3.6)
+    - Updated numba version

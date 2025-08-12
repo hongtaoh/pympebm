@@ -97,16 +97,17 @@ def get_unique_rows(partial_rankings:List[List[int]]) -> np.ndarray:
     unique_rows, idx = np.unique(padded, axis=0, return_index=True)
     return unique_rows
 
-def get_padded_partial_orders(
+def get_combined_order(
         biomarkers_int:np.ndarray, # biomarkers in int form
         low_num: int, # lowest possible number of partial rankings
         high_num:int,
         low_length:int, # lowest possible length of each partial ranking
         high_length:int, 
         rng: np.random.Generator,
-    ) -> np.ndarray:
-    """Get unique and padded partial orders. 
-    """
+        method:str,
+        mcmc_iterations:int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+
     n_partial_rankings = rng.integers(low_num, high_num + 1)
     # partial ranking length does not have to be unique, so replace=True
     lengths = rng.choice(np.arange(low_length, high_length), size=n_partial_rankings, replace=True)
@@ -117,25 +118,17 @@ def get_padded_partial_orders(
         # to make sure the output partial rankings have the same length;
         n_unique = len({tuple(r) for r in partial_rankings})
     
-    return get_unique_rows(partial_rankings)
-
-def get_combined_order(
-        padded_partial_orders:np.ndarray,
-        rng: np.random.Generator,
-        method:str,
-        mcmc_iterations:int,
-        pl_best:bool,
-    ) -> np.ndarray:
+    unique_partial_rankings = get_unique_rows(partial_rankings)
 
     # get combined ordering
     if method != 'PL':
-        mpebm_mcmc_sampler = MCMC(ordering_array=padded_partial_orders, rng=rng, method=method, mcmc_iterations=mcmc_iterations)
+        mpebm_mcmc_sampler = MCMC(ordering_array=unique_partial_rankings, rng=rng, method=method, iterations=mcmc_iterations)
         combined_order = mpebm_mcmc_sampler.sample_one()
     else:
-        pl_sampler = PlackettLuce(ordering_array=padded_partial_orders, rng=rng, pl_best=pl_best)
+        pl_sampler = PlackettLuce(ordering_array=unique_partial_rankings, rng=rng)
         combined_order = pl_sampler.sample_one()
 
-    return combined_order
+    return combined_order, unique_partial_rankings
 
 def get_final_params(
         params:Dict[str, Dict[str, float]], 
@@ -199,15 +192,7 @@ def pl_energy_numba(ordering_idx, theta):
     return total_energy
 
 class PlackettLuce:
-    def __init__(
-            self, 
-            ordering_array:np.ndarray,
-            rng: np.random.Generator, 
-            sample_count:int=200, 
-            mcmc_iterations:int=500,
-            n_shuffle:int=2,
-            pl_best:bool=True
-            ):
+    def __init__(self, ordering_array:np.ndarray, rng: np.random.Generator, sample_count:int=200, mcmc_iterations:int=500):
         """
         ordering_array: padded array of array (integers, arbitrary IDs);  padded with -1
         rng: np.random.Generator
@@ -216,8 +201,6 @@ class PlackettLuce:
         # how many to sample for conflict and certainty calculation
         self.sample_count = sample_count 
         self.mcmc_iterations = mcmc_iterations
-        self.n_shuffle = n_shuffle
-        self.pl_best = pl_best
 
         # Step 1: Find all unique elements and sort
         # pass over -1
@@ -299,55 +282,19 @@ class PlackettLuce:
         return res
     
     def sample_one_best(self) -> np.ndarray:
-        random_state = self.rng.integers(0, 2**32 - 1)
-
-        # Sample one first 
         current_order = self.sample_one_random()
         current_energy = self.pl_energy(current_order)
-
-        # Track best order and best energy 
         best_order = current_order.copy()
         best_energy = current_energy 
-
-        ## MCMC iterations
         for _ in range(self.mcmc_iterations):
-            new_order = current_order.copy()
-            random_state = shuffle_order(
-                arr = new_order, n_shuffle=self.n_shuffle, random_state=random_state)
-            new_energy = self.pl_energy(new_order)
-            # Calculate the acceptance probability, α = min(1, P(σ')/P(σ)).
-            # P(σ')/P(σ) = exp(-E(σ')) / exp(-E(σ)) = exp(E(σ) - E(σ'))
-            delta_energy = current_energy - new_energy
-            if delta_energy > 700:  # Safe threshold for float64
-                prob_accept = 1.0
-            else:
-                prob_accept = min(1.0, np.exp(delta_energy))
-
-            # Linear Congruential Generator (LCG)
-            random_state = (random_state * 1103515245 + 12345) % (2**31)
-            random_uniform = random_state / (2**31)  # Convert to [0, 1)
-
-            # Accept the new ordering with probability α
-            if random_uniform < prob_accept:
-                current_order=new_order
-                current_energy=new_energy
             
-            if current_energy < best_energy:
-                best_order = current_order.copy()
-                best_energy = current_energy
 
-        return best_order 
+
     
-    def sample_one(self) -> np.ndarray:
-        if self.pl_best:
-            return self.sample_one_best()
-        else:
-            return self.sample_one_random()
-
     def get_sampled_combined_orderings(self):
         for idx in range(self.sample_count):
             self.sampled_combined_orderings[idx] = self.sample_one()
-       
+    
     def compute_certainty(self) -> float:
         if np.sum(self.sampled_combined_orderings[0]) == 0:
             self.get_sampled_combined_orderings()
@@ -635,7 +582,7 @@ class MCMC:
     def __init__(
             self,
             ordering_array: np.ndarray,
-            mcmc_iterations: int=1000, 
+            iterations: int=1000, 
             n_shuffle: int=2,
             rng: np.random.Generator=None,
             method: str='Mallows',
@@ -654,7 +601,7 @@ class MCMC:
         # 1. Calculate the preference weights from the input data.
         self.method=method
         self.ordering_array =ordering_array
-        self.iterations = mcmc_iterations
+        self.iterations = iterations 
         self.n_shuffle = n_shuffle 
         self.sample_count = sample_count 
         self.rng = rng 
