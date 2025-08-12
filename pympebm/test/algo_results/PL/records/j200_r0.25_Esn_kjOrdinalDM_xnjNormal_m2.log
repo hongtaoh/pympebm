@@ -1,0 +1,13 @@
+2025-08-10 21:46:16,971 - INFO - Running j200_r0.25_Esn_kjOrdinalDM_xnjNormal_m2
+2025-08-10 21:46:16,974 - INFO - Number of biomarkers: 13
+2025-08-10 21:46:17,394 - INFO - Iteration 50/500, Acceptance Ratio: 34.00%, Log Likelihood: -6713.7335, 
+2025-08-10 21:46:17,503 - INFO - Iteration 100/500, Acceptance Ratio: 24.00%, Log Likelihood: -6669.5829, 
+2025-08-10 21:46:17,614 - INFO - Iteration 150/500, Acceptance Ratio: 20.67%, Log Likelihood: -6632.8299, 
+2025-08-10 21:46:17,724 - INFO - Iteration 200/500, Acceptance Ratio: 15.50%, Log Likelihood: -6632.8299, 
+2025-08-10 21:46:17,832 - INFO - Iteration 250/500, Acceptance Ratio: 13.20%, Log Likelihood: -6629.7730, 
+2025-08-10 21:46:17,941 - INFO - Iteration 300/500, Acceptance Ratio: 12.00%, Log Likelihood: -6628.1229, 
+2025-08-10 21:46:18,050 - INFO - Iteration 350/500, Acceptance Ratio: 10.86%, Log Likelihood: -6630.1585, 
+2025-08-10 21:46:18,160 - INFO - Iteration 400/500, Acceptance Ratio: 10.00%, Log Likelihood: -6629.2422, 
+2025-08-10 21:46:18,271 - INFO - Iteration 450/500, Acceptance Ratio: 10.44%, Log Likelihood: -6598.8497, 
+2025-08-10 21:46:18,382 - INFO - Iteration 500/500, Acceptance Ratio: 9.60%, Log Likelihood: -6598.9076, 
+2025-08-10 21:46:18,387 - INFO - Results saved to algo_results/PL/results/j200_r0.25_Esn_kjOrdinalDM_xnjNormal_m2_results.json

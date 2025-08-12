@@ -1,49 +1,105 @@
-from pympebm import run_ebm
-from pympebm.data import get_sample_data_path, get_params_path
-from pympebm.utils.runners import extract_fname
+from pympebm import run_mpebm, get_params_path
 import os
 import json 
+import re 
 import numpy as np 
 
-cwd = os.getcwd()
-print("Current Working Directory:", cwd)
-data_dir = f"{cwd}/pympebm/test/my_data"
-data_files = os.listdir(data_dir) 
+def extract_components(filename):
+    pattern = r'^j(\d+)_r([\d.]+)_E(.*?)_m(\d+)$'
+    match = re.match(pattern, filename)
+    if match:
+        return match.groups()  # returns tuple (J, R, E, M)
+    return None
 
-OUTPUT_DIR = 'algo_results'
+if __name__=='__main__':
 
-with open(f"{cwd}/pympebm/test/true_order_and_stages.json", "r") as f:
-    true_order_and_stages = json.load(f)
+    cwd = os.getcwd()
+    print("Current Working Directory:", cwd)
+    data_dir = f"{cwd}/pympebm/test/my_data"
+    data_files = os.listdir(data_dir) 
+    data_files = [x for x in data_files if 'PR' not in x]
 
-# for algorithm in ['hard_kmeans', 'mle', 'conjugate_priors', 'em', 'kde']:
-for algorithm in ['conjugate_priors']:
+    OUTPUT_DIR = 'algo_results'
+
+    with open(f"{cwd}/pympebm/test/true_order_and_stages.json", "r") as f:
+        true_order_and_stages = json.load(f)
+
+    params_file = get_params_path()
+
+    with open(params_file) as f:
+        params = json.load(f)
+
+    biomarkers_str = np.array(sorted(params.keys()))
+    biomarkers_int = np.arange(0, len(params))
+    str2int = dict(zip(biomarkers_str, biomarkers_int))
+    int2str = dict(zip(biomarkers_int, biomarkers_str))
+
     for data_file in data_files:
+        estimated_partial_rankings = []
+
         fname = data_file.replace('.csv', '')
+        J, R, E, M = extract_components(fname)
+
         true_order_dict = true_order_and_stages[fname]['true_order']
         true_stages = true_order_and_stages[fname]['true_stages']
-        try:
-            order_array = true_order_and_stages[fname]['ordering_array']
-        except:
-            print('No order_array')
-        
-        rng = np.random.default_rng(53)
-        random_num = rng.integers(5, 8)  # generate a random int between 5 and 7
-        real_order = sorted(true_order_dict, key=lambda k: true_order_dict.get(k))
-        order_array = [real_order[:random_num+1], real_order[random_num-1:]]
+        partial_rankings = true_order_and_stages[fname]['ordering_array']
+        n_partial_rankings = len(partial_rankings)
 
-        results = run_ebm(
-            order_array=order_array,
+        for idx in range(n_partial_rankings):
+            # partial ranking data file path
+            pr_data_file = f"{data_dir}/PR{idx}_m{M}_j{J}_r{R}_E{E}.csv"
+
+            results = run_mpebm(
+                data_file=pr_data_file,
+                save_results=False,
+                save_details=True,
+                n_iter=500,
+                burn_in=10,
+                seed = 53
+            )
+            order_with_highest_ll = results['order_with_highest_ll']
+            # Sort by value, the sorted result will be a list of tuples
+            partial_ordering = [k for k, v in sorted(order_with_highest_ll.items(), key=lambda item: item[1])]
+            partial_ordering = np.array([str2int[bm] for bm in partial_ordering])
+            estimated_partial_rankings.append(partial_ordering)
+
+        # ridged arrays
+        estimated_partial_rankings = np.array(estimated_partial_rankings, dtype='object')
+        for mp_method in ['Pairwise', 'Mallows', 'BT', 'PL']:
+            if mp_method == 'PL':
+                run_mpebm(
+                    partial_rankings=estimated_partial_rankings,
+                    bm2int=str2int,
+                    mp_method=mp_method,
+                    save_results=True,
+                    data_file= os.path.join(data_dir, data_file),
+                    output_dir=OUTPUT_DIR,
+                    output_folder=mp_method,
+                    n_iter=500,
+                    n_shuffle=2,
+                    burn_in=10,
+                    thinning=1,
+                    true_order_dict=true_order_dict,
+                    true_stages = true_stages,
+                    skip_heatmap=True,
+                    skip_traceplot=True,
+                    save_details=False,
+                    seed = 53
+                )
+
+        run_mpebm(
+            save_results=True,
             data_file= os.path.join(data_dir, data_file),
-            algorithm=algorithm,
             output_dir=OUTPUT_DIR,
-            n_iter=200,
+            output_folder='saebm',
+            n_iter=500,
             n_shuffle=2,
             burn_in=10,
             thinning=1,
             true_order_dict=true_order_dict,
             true_stages = true_stages,
-            skip_heatmap=False,
-            skip_traceplot=False,
-            mp_method='PL',
+            skip_heatmap=True,
+            skip_traceplot=True,
+            save_details=False,
             seed = 53
         )
