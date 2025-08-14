@@ -65,3 +65,9 @@ To run `gen.py` first. Then to generate partial ordering datasets. `gen_partial.
 
 - 2025-08-11 (V 0.3.6)
     - Updated numba version
+- 2025-08-12 (V 0.3.9)
+    - Kept improving the numba version. Now it's faster. 
+    - Include MCMC in PL sampling as well. 
+
+- 2025-08-11 (V 0.4.0)
+    - Add RMJ distance mallows.

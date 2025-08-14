@@ -54,8 +54,8 @@ if __name__=='__main__':
                 data_file=pr_data_file,
                 save_results=False,
                 save_details=True,
-                n_iter=500,
-                burn_in=10,
+                n_iter=10000,
+                burn_in=500,
                 seed = 53
             )
             order_with_highest_ll = results['order_with_highest_ll']
@@ -64,9 +64,8 @@ if __name__=='__main__':
             partial_ordering = [str2int[bm] for bm in partial_ordering]
             estimated_partial_rankings.append(partial_ordering)
 
-        # ridged arrays
         padded_partial_rankings = get_unique_rows(estimated_partial_rankings)
-        for mp_method in ['Pairwise', 'Mallows', 'BT', 'PL']:
+        for mp_method in ['Pairwise', 'Mallows_Tau', 'Mallows_RMJ', 'BT', 'PL']:
             run_mpebm(
                 partial_rankings=padded_partial_rankings,
                 bm2int=str2int,
@@ -75,9 +74,9 @@ if __name__=='__main__':
                 data_file= os.path.join(data_dir, data_file),
                 output_dir=OUTPUT_DIR,
                 output_folder=mp_method,
-                n_iter=500,
+                n_iter=5000,
                 n_shuffle=2,
-                burn_in=10,
+                burn_in=200,
                 thinning=1,
                 true_order_dict=true_order_dict,
                 true_stages = true_stages,
@@ -92,9 +91,9 @@ if __name__=='__main__':
             data_file= os.path.join(data_dir, data_file),
             output_dir=OUTPUT_DIR,
             output_folder='saebm',
-            n_iter=500,
+            n_iter=5000,
             n_shuffle=2,
-            burn_in=10,
+            burn_in=200,
             thinning=1,
             true_order_dict=true_order_dict,
             true_stages = true_stages,

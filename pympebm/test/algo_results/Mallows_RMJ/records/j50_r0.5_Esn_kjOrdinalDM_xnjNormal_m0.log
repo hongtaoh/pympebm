@@ -1,0 +1,13 @@
+2025-08-14 14:34:16,265 - INFO - Running j50_r0.5_Esn_kjOrdinalDM_xnjNormal_m0
+2025-08-14 14:34:16,267 - INFO - Number of biomarkers: 14
+2025-08-14 14:34:16,626 - INFO - Iteration 500/5000, Acceptance Ratio: 4.60%, Log Likelihood: -1636.6304, 
+2025-08-14 14:34:16,983 - INFO - Iteration 1000/5000, Acceptance Ratio: 2.30%, Log Likelihood: -1636.6304, 
+2025-08-14 14:34:17,336 - INFO - Iteration 1500/5000, Acceptance Ratio: 1.53%, Log Likelihood: -1636.6304, 
+2025-08-14 14:34:17,688 - INFO - Iteration 2000/5000, Acceptance Ratio: 1.15%, Log Likelihood: -1636.6304, 
+2025-08-14 14:34:18,044 - INFO - Iteration 2500/5000, Acceptance Ratio: 0.92%, Log Likelihood: -1636.6304, 
+2025-08-14 14:34:18,399 - INFO - Iteration 3000/5000, Acceptance Ratio: 0.77%, Log Likelihood: -1636.6304, 
+2025-08-14 14:34:18,749 - INFO - Iteration 3500/5000, Acceptance Ratio: 0.66%, Log Likelihood: -1636.6304, 
+2025-08-14 14:34:19,106 - INFO - Iteration 4000/5000, Acceptance Ratio: 0.57%, Log Likelihood: -1636.6304, 
+2025-08-14 14:34:19,488 - INFO - Iteration 4500/5000, Acceptance Ratio: 0.51%, Log Likelihood: -1636.6304, 
+2025-08-14 14:34:19,869 - INFO - Iteration 5000/5000, Acceptance Ratio: 0.46%, Log Likelihood: -1636.6304, 
+2025-08-14 14:34:19,871 - INFO - Results saved to algo_results/Mallows_RMJ/results/j50_r0.5_Esn_kjOrdinalDM_xnjNormal_m0_results.json

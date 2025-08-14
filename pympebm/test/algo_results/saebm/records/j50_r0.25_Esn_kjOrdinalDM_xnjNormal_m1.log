@@ -1,0 +1,13 @@
+2025-08-14 14:31:01,960 - INFO - Running j50_r0.25_Esn_kjOrdinalDM_xnjNormal_m1
+2025-08-14 14:31:01,961 - INFO - Number of biomarkers: 13
+2025-08-14 14:31:02,431 - INFO - Iteration 500/5000, Acceptance Ratio: 5.20%, Log Likelihood: -1677.8539, 
+2025-08-14 14:31:02,875 - INFO - Iteration 1000/5000, Acceptance Ratio: 3.90%, Log Likelihood: -1677.7420, 
+2025-08-14 14:31:03,326 - INFO - Iteration 1500/5000, Acceptance Ratio: 2.60%, Log Likelihood: -1677.7420, 
+2025-08-14 14:31:03,774 - INFO - Iteration 2000/5000, Acceptance Ratio: 2.95%, Log Likelihood: -1675.0561, 
+2025-08-14 14:31:04,223 - INFO - Iteration 2500/5000, Acceptance Ratio: 2.36%, Log Likelihood: -1675.0561, 
+2025-08-14 14:31:04,665 - INFO - Iteration 3000/5000, Acceptance Ratio: 1.97%, Log Likelihood: -1675.0561, 
+2025-08-14 14:31:05,106 - INFO - Iteration 3500/5000, Acceptance Ratio: 1.69%, Log Likelihood: -1675.0561, 
+2025-08-14 14:31:05,544 - INFO - Iteration 4000/5000, Acceptance Ratio: 1.48%, Log Likelihood: -1675.0561, 
+2025-08-14 14:31:05,979 - INFO - Iteration 4500/5000, Acceptance Ratio: 1.31%, Log Likelihood: -1675.0561, 
+2025-08-14 14:31:06,422 - INFO - Iteration 5000/5000, Acceptance Ratio: 1.42%, Log Likelihood: -1675.5350, 
+2025-08-14 14:31:06,424 - INFO - Results saved to algo_results/saebm/results/j50_r0.25_Esn_kjOrdinalDM_xnjNormal_m1_results.json

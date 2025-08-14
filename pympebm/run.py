@@ -21,7 +21,7 @@ def run_mpebm(
     data_file: str,
     output_dir: Optional[str]=None,
     partial_rankings:Optional[np.ndarray] = np.array([]),
-    bm2int: Optional[Dict[str, int]] = dict(),
+    bm2int: Optional[Dict[str, int]] = dict(), 
     mp_method:Optional[str] = None,
     output_folder: Optional[str] = None,
     n_iter: int = 2000,
@@ -122,9 +122,12 @@ def run_mpebm(
         raise
 
     # sort biomarkeres by name, ascending
+    # This is the order appearing in data_matrix
     biomarker_names = np.array(sorted(data.biomarker.unique()))
+    # biomarkers_int will be corresponding IDs, in the order of data_matrix below. 
+    # This is very important 
     biomarkers_int = np.array([])
-    if len(bm2int)>0:
+    if len(partial_rankings)>0:
         # convert biomarker names in string to intergers, according to the str2int mapper
         biomarkers_int = np.array([bm2int[x] for x in biomarker_names])
     n_biomarkers = len(biomarker_names)
@@ -153,16 +156,18 @@ def run_mpebm(
     try:
         accepted_orders, log_likelihoods, final_theta_phi, final_stage_post, current_pi = metropolis_hastings(
             partial_rankings=partial_rankings, mp_method=mp_method,
-            data_matrix=data_matrix, diseased_arr=diseased_arr, biomarker_names=biomarker_names, biomarkers_int = biomarkers_int,
-            iterations = n_iter, n_shuffle = n_shuffle,  prior_n=prior_n, prior_v=prior_v, rng=rng
+            data_matrix=data_matrix, diseased_arr=diseased_arr, biomarkers_int=biomarkers_int,
+            iterations = n_iter, n_shuffle = n_shuffle, prior_n=prior_n, prior_v=prior_v, rng=rng
         )
     except Exception as e:
         logging.error(f"Error in Metropolis-Hastings algorithm: {e}")
         raise
 
     # Get the order associated with the highet log likelihoods
+    # This is the indices for biomarkers_int
+    # Because biomarkers_int corresponds to biomarker_names, which in the same ordering as true_order_dict,
+    # we can compare dirctly order_with_highest_ll with true_order_dict.values
     order_with_highest_ll = accepted_orders[log_likelihoods.index(max(log_likelihoods))]
-
     # unique_items is in the the same order as as dict(sorted(true_order_dict.items())), and biomarker_names
     # they are all the same
     if true_order_dict:

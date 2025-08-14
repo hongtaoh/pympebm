@@ -183,12 +183,23 @@ def pl_neg_log_likelihood_numba(ordering_array, theta):
     return -total
 
 @njit
-def pl_energy_numba(ordering_idx, theta):
+def pl_energy_numba(ordering, unique_elements, theta):
     """
-    ordering_idx: 1D int64 array of 0-based indices into theta
+    ordering: ID int64 array of IDs
+    unique_elements: the sorted array of unique elements from PL class
     theta: 1D float64 array
     Returns: scalar energy
     """
+    n = len(ordering)
+    # Map item IDs to theta indices
+    ordering_idx = np.zeros(n, dtype=np.int64)
+    for i in range(n):
+        for j in range(n):
+            if ordering[i] == unique_elements[j]:
+                ordering_idx[i] = j
+                break 
+
+    # Compute PL energy
     total_energy = 0.0 
     n = len(ordering_idx)
     for i in range(n):
@@ -197,6 +208,79 @@ def pl_energy_numba(ordering_idx, theta):
         log_denom = max_logit + np.log(np.sum(np.exp(logits - max_logit)))
         total_energy += -(theta[ordering_idx[i]] - log_denom)
     return total_energy
+
+def pl_sample_one_random(n:int, unique_elements:np.ndarray, theta:np.ndarray, rng:np.random.Generator) -> np.ndarray:
+    """Sample a single complete ordering (integer indices into theta)."""
+    # n = len(unique_elements)
+    res = np.empty(n, dtype=unique_elements.dtype)
+
+    remaining_items = unique_elements.copy()
+    remaining_idx = np.arange(n, dtype=np.int64)
+    remaining_len = n 
+
+    for pos in range(n):
+        # this is the indice of each bm in remaining according to the original unique_elements
+        logits = theta[remaining_idx[:remaining_len]]
+        max_logit = np.max(logits)
+        probs = np.exp(logits - max_logit)
+        probs /= np.sum(probs)
+
+        chosen_index = rng.choice(remaining_len, p=probs)
+        # update res 
+        res[pos] = remaining_items[chosen_index]
+        # swap+slice deletion
+        remaining_idx[chosen_index], remaining_idx[remaining_len - 1] = (
+            remaining_idx[remaining_len - 1],
+            remaining_idx[chosen_index],
+        )
+        remaining_items[chosen_index], remaining_items[remaining_len - 1] = (
+            remaining_items[remaining_len - 1],
+            remaining_items[chosen_index],
+        )
+        remaining_len -= 1
+
+    return res
+
+def pl_sample_one_best(
+        unique_elements:np.ndarray,
+        current_order:np.ndarray, 
+        theta:np.ndarray, 
+        mcmc_iterations:int, 
+        n_shuffle:int,
+        rng:np.random.Generator
+        ) -> np.ndarray:
+    """Use MCMC to sample PL
+    """
+    # Sample one first 
+    current_energy = pl_energy_numba(current_order, unique_elements, theta)
+
+    # Track best order and best energy 
+    best_order = current_order.copy()
+    best_energy = current_energy 
+
+    ## MCMC iterations
+    for _ in range(mcmc_iterations):
+        new_order = current_order.copy()
+        shuffle_order(arr = new_order, n_shuffle=n_shuffle, rng=rng)
+        new_energy = pl_energy_numba(new_order, unique_elements, theta)
+        # Calculate the acceptance probability, α = min(1, P(σ')/P(σ)).
+        # P(σ')/P(σ) = exp(-E(σ')) / exp(-E(σ)) = exp(E(σ) - E(σ'))
+        delta_energy = current_energy - new_energy
+        if delta_energy > 700:  # Safe threshold for float64
+            prob_accept = 1.0
+        else:
+            prob_accept = min(1.0, np.exp(delta_energy))
+
+        # Accept the new ordering with probability α
+        if np.random.random() < prob_accept:
+            current_order=new_order
+            current_energy=new_energy
+        
+        if current_energy < best_energy:
+            best_order = current_order.copy()
+            best_energy = current_energy
+
+    return best_order 
 
 class PlackettLuce:
     def __init__(
@@ -228,6 +312,8 @@ class PlackettLuce:
         self.n_unique_elements = len(self.unique_elements)
 
         # Step 2: Build mapping from original ID -> theta index 
+        # This is useful to convert partial rankings
+        # For full rankings, we can use np.argsort()
         self.elem2idx = {elem: idx for idx, elem in enumerate(self.unique_elements)}
 
         # Step 3: Remap all orderings to 0-based theta indices
@@ -263,81 +349,25 @@ class PlackettLuce:
         Returns: scalar energy
         """
         # Map real IDs to theta index space
-        ordering_idx = np.array([self.elem2idx[x] for x in ordering], dtype=np.int64)
-        return pl_energy_numba(ordering_idx, self.theta)
+        # ordering_idx = np.array([self.elem2idx[x] for x in ordering], dtype=np.int64)
+        return pl_energy_numba(ordering, self.unique_elements, self.theta)
 
     def sample_one_random(self) -> np.ndarray:
         """Sample a single complete ordering (integer indices into theta)."""
-        n = self.n_unique_elements
-        res = np.empty(n, dtype=self.unique_elements.dtype)
-
-        remaining_items = self.unique_elements.copy()
-        remaining_idx = np.arange(n, dtype=np.int64)
-        remaining_len = n 
-
-        for pos in range(n):
-            # this is the indice of each bm in remaining according to the original unique_elements
-            logits = self.theta[remaining_idx[:remaining_len]]
-            max_logit = np.max(logits)
-            probs = np.exp(logits - max_logit)
-            probs /= np.sum(probs)
-
-            chosen_index = self.rng.choice(remaining_len, p=probs)
-            # update res 
-            res[pos] = remaining_items[chosen_index]
-            # swap+slice deletion
-            remaining_idx[chosen_index], remaining_idx[remaining_len - 1] = (
-                remaining_idx[remaining_len - 1],
-                remaining_idx[chosen_index],
-            )
-            remaining_items[chosen_index], remaining_items[remaining_len - 1] = (
-                remaining_items[remaining_len - 1],
-                remaining_items[chosen_index],
-            )
-            remaining_len -= 1
-
-        return res
+        return pl_sample_one_random(self.n_unique_elements, self.unique_elements, self.theta, self.rng)
     
     def sample_one_best(self) -> np.ndarray:
-        random_state = self.rng.integers(0, 2**32 - 1)
-
-        # Sample one first 
         current_order = self.sample_one_random()
-        current_energy = self.pl_energy(current_order)
 
-        # Track best order and best energy 
-        best_order = current_order.copy()
-        best_energy = current_energy 
-
-        ## MCMC iterations
-        for _ in range(self.mcmc_iterations):
-            new_order = current_order.copy()
-            random_state = shuffle_order(
-                arr = new_order, n_shuffle=self.n_shuffle, random_state=random_state)
-            new_energy = self.pl_energy(new_order)
-            # Calculate the acceptance probability, α = min(1, P(σ')/P(σ)).
-            # P(σ')/P(σ) = exp(-E(σ')) / exp(-E(σ)) = exp(E(σ) - E(σ'))
-            delta_energy = current_energy - new_energy
-            if delta_energy > 700:  # Safe threshold for float64
-                prob_accept = 1.0
-            else:
-                prob_accept = min(1.0, np.exp(delta_energy))
-
-            # Linear Congruential Generator (LCG)
-            random_state = (random_state * 1103515245 + 12345) % (2**31)
-            random_uniform = random_state / (2**31)  # Convert to [0, 1)
-
-            # Accept the new ordering with probability α
-            if random_uniform < prob_accept:
-                current_order=new_order
-                current_energy=new_energy
-            
-            if current_energy < best_energy:
-                best_order = current_order.copy()
-                best_energy = current_energy
-
-        return best_order 
-    
+        return pl_sample_one_best(
+            unique_elements = self.unique_elements,
+            current_order=current_order, 
+            theta=self.theta, 
+            mcmc_iterations=self.mcmc_iterations, 
+            n_shuffle=self.n_shuffle,
+            rng=self.rng
+        )
+        
     def sample_one(self) -> np.ndarray:
         if self.pl_best:
             return self.sample_one_best()
@@ -376,6 +406,7 @@ def compute_conflict2(ordering_array:np.ndarray) -> float:
     """
     Args:
         - ordering_array: np array of arrays of the same length (IDs, padded with -1)
+        - dist_metric: choose from 'tau' and 'rmj'
     """
     total = 0
     K = len(ordering_array)
@@ -407,17 +438,16 @@ def compute_conflict2(ordering_array:np.ndarray) -> float:
                 if item in common_items:
                     r2[idx] = item 
                     idx += 1
-        
+
             # get the index of the common items 
             r1 = np.argsort(r1)
             r2 = np.argsort(r2)
 
             total += normalized_kendalls_tau_distance(r1, r2)
+ 
     return 2/(K * (K-1)) * total if K > 1 else 0.0
 
-@njit
-# Linear Congruential Generator (LCG)
-def shuffle_order(arr: np.ndarray, n_shuffle: int, random_state: int) -> int:
+def shuffle_order(arr: np.ndarray, n_shuffle: int, rng:np.random.Generator) -> int:
     """
     Numba-compatible shuffle function that actually works.
 
@@ -426,36 +456,25 @@ def shuffle_order(arr: np.ndarray, n_shuffle: int, random_state: int) -> int:
     Args:
         arr: Array to shuffle (modified in-place)  
         n_shuffle: Number of swaps to perform
-        random_state: Random seed state
-        
-    Returns:
-        Updated random_state
     """
-    if n_shuffle <= 1 or n_shuffle > len(arr):
-        return random_state
+    if n_shuffle <= 1:
+        raise ValueError("n_shuffle must be >= 2 or =0")
+    if n_shuffle > len(arr):
+        raise ValueError("n_shuffle cannot exceed array length")
     if n_shuffle == 0:
-        return random_state
+        return
 
-    # Simple but effective: perform n_shuffle random swaps
-    for _ in range(n_shuffle):
-        # Generate two random indices using linear congruential generator
-        random_state = (random_state * 1103515245 + 12345) % (2**31)
-        idx1 = random_state % len(arr)
-        
-        random_state = (random_state * 1103515245 + 12345) % (2**31) 
-        idx2 = random_state % len(arr)
-        
-        # Ensure they're different
-        if idx1 == idx2:
-            idx2 = (idx2 + 1) % len(arr)
-            
-        # Swap
-        arr[idx1], arr[idx2] = arr[idx2], arr[idx1]
-    
-    return random_state
+    indices=rng.choice(len(arr), size=n_shuffle, replace=False)
+    original_indices=indices.copy()
+
+    while True:
+        shuffled_indices=rng.permutation(original_indices)
+        if not np.any(shuffled_indices == original_indices):
+            break
+    arr[indices]=arr[shuffled_indices]
 
 @njit 
-def pairwise_energy(ordering, weights_dict_keys, weights_dict_values) -> float:
+def pairwise_energy_numba(ordering, weights_dict_keys, weights_dict_values) -> float:
         """
         Calculates the energy E(σ) of a given ordering.
 
@@ -486,7 +505,7 @@ def pairwise_energy(ordering, weights_dict_keys, weights_dict_values) -> float:
         return -total_sum
 
 @njit 
-def bt_energy(ordering, theta_keys, theta_values) -> float:
+def bt_energy_numba(ordering, theta_keys, theta_values) -> float:
     """
     Calculate Bradley-Terry energy.
     
@@ -518,14 +537,32 @@ def bt_energy(ordering, theta_keys, theta_values) -> float:
             total_energy += -np.log(max(prob_ij, 1e-16))
     return total_energy
 
+
 @njit 
-def mallows_energy(ordering:np.ndarray, ordering_array:np.ndarray) -> float:
+def normalized_rmj_distance(central:np.ndarray, ranking:np.ndarray) -> float:
+    n = len(central)
+    max_id = np.max(central) 
+    pos_array = np.empty(max_id + 1, dtype = np.int64)
+    for i in range(n):
+        pos_array[central[i]] = i 
+    
+    distance = 0.0 
+    for i in range(n-1):
+        a = ranking[i]
+        b = ranking[i+1]
+        if pos_array[a] > pos_array[b]:
+            distance += (n - i - 1)
+    max_distance = n * (n-1) / 2
+    return distance / max_distance if max_distance > 0 else 0.0 
+
+@njit 
+def mallows_energy_numba(ordering:np.ndarray, ordering_array:np.ndarray, dist_metric:str) -> float:
     """Calculate the energy of ordering using mallows
     Args:
         ordering: np.ndarray, an 1D array of IDs
         ordering_array: NumbaLists of NumbaList
     """
-    total_tau_distance = 0.0 
+    total_distance = 0.0 
     for partial_ordering in ordering_array:
 
         # find common 
@@ -549,15 +586,18 @@ def mallows_energy(ordering:np.ndarray, ordering_array:np.ndarray) -> float:
             if item in common_items:
                 r2[idx] = item 
                 idx += 1
-    
-        # get the index of the common items 
-        r1 = np.argsort(r1)
-        r2 = np.argsort(r2)
 
-        total_tau_distance += normalized_kendalls_tau_distance(r1, r2)
-    return total_tau_distance
+        if dist_metric == 'tau':
+            # get the index of the common items 
+            r1 = np.argsort(r1)
+            r2 = np.argsort(r2)
 
-@njit 
+            total_distance += normalized_kendalls_tau_distance(r1, r2)
+        else:
+            total_distance += normalized_rmj_distance(central=r1, ranking=r2)
+    return total_distance
+
+
 def mcmc_sample(
         initial_ordering,
         iterations,
@@ -566,7 +606,7 @@ def mcmc_sample(
         weights_keys, weights_values,
         theta_keys, theta_values,
         ordering_array,
-        random_state,
+        rng
 ) -> np.ndarray:
     """
     Runs the Metropolis-Hastings MCMC sampler to get a final ordering.
@@ -574,15 +614,18 @@ def mcmc_sample(
     Returns:
         A numpy array representing the final sampled total ordering.
     """
+
     current_order = initial_ordering.copy()
 
     # Calculate initial energy
     if method == 0: # Pairwise
-        current_energy= pairwise_energy(current_order, weights_keys, weights_values)
-    elif method == 1: # Mallows
-        current_energy= mallows_energy(current_order, ordering_array)
+        current_energy= pairwise_energy_numba(current_order, weights_keys, weights_values)
+    elif method == 1: # Mallows_Tau
+        current_energy= mallows_energy_numba(current_order, ordering_array, dist_metric='tau')
+    elif method == 2: # Mallows_RMJ
+        current_energy = mallows_energy_numba(current_order, ordering_array, dist_metric='rmj')
     else: # BT
-        current_energy = bt_energy(current_order, theta_keys, theta_values)
+        current_energy = bt_energy_numba(current_order, theta_keys, theta_values)
 
     best_order = current_order.copy()
     best_energy = current_energy 
@@ -590,16 +633,17 @@ def mcmc_sample(
     # Loop for T iterations
     for _ in range(iterations):
         new_order = current_order.copy()
-        random_state = shuffle_order(
-            arr = new_order, n_shuffle=n_shuffle, random_state=random_state)
+        shuffle_order(arr = new_order, n_shuffle=n_shuffle, rng=rng)
 
         # Calculate new energy
         if method == 0: # Pairwise
-            new_energy= pairwise_energy(new_order, weights_keys, weights_values)
-        elif method == 1: # Mallows
-            new_energy= mallows_energy(new_order, ordering_array)
+            new_energy= pairwise_energy_numba(new_order, weights_keys, weights_values)
+        elif method == 1: # Mallows_Tau
+            new_energy= mallows_energy_numba(new_order, ordering_array, dist_metric='tau')
+        elif method == 2: # Mallows_RMJ
+            new_energy= mallows_energy_numba(new_order, ordering_array, dist_metric='rmj')
         else: # BT
-            new_energy = bt_energy(new_order, theta_keys, theta_values)
+            new_energy = bt_energy_numba(new_order, theta_keys, theta_values)
 
         # Calculate the acceptance probability, α = min(1, P(σ')/P(σ)).
         # P(σ')/P(σ) = exp(-E(σ')) / exp(-E(σ)) = exp(E(σ) - E(σ'))
@@ -609,12 +653,8 @@ def mcmc_sample(
         else:
             prob_accept = min(1.0, np.exp(delta_energy))
 
-        # Linear Congruential Generator (LCG)
-        random_state = (random_state * 1103515245 + 12345) % (2**31)
-        random_uniform = random_state / (2**31)  # Convert to [0, 1)
-
         # Accept the new ordering with probability α
-        if random_uniform < prob_accept:
+        if rng.random() < prob_accept:
             current_order=new_order
             current_energy=new_energy
         
@@ -649,7 +689,7 @@ class MCMC:
             iterations: The number of MCMC iterations to perform.
             n_shuffle: The number of items to swap in each proposal step.
                        The paper suggests a swap of 2 items.
-            method: choose from 'Mallows', 'Pairwise', 'BT'
+            method: choose from 'Mallows_Tau', 'Mallows_RMJ', 'Pairwise', 'BT'
         """
         # 1. Calculate the preference weights from the input data.
         self.method=method
@@ -658,6 +698,10 @@ class MCMC:
         self.n_shuffle = n_shuffle 
         self.sample_count = sample_count 
         self.rng = rng 
+        if method == 'Mallows_Tau':
+            self.dist_metric = 'tau'
+        if method == 'Mallows_RMJ':
+            self.dist_metric = 'rmj'
 
         # Get unique elements 
         self.unique_elements = np.unique(
@@ -750,12 +794,21 @@ class MCMC:
         # Return dictionary mapping item IDs to theta values
         return {item: result.x[idx] for item, idx in items_idx.items()}
     
+    def bt_energy(self, ordering:np.ndarray) -> float:
+        return bt_energy_numba(ordering, self.theta_keys, self.theta_values)
+    
+    def pairwise_energy(self, ordering:np.ndarray) -> float:
+        return pairwise_energy_numba(ordering, self.weights_keys, self.weights_values)
+    
+    def mallows_energy(self, ordering:np.ndarray) -> float:
+        return mallows_energy_numba(ordering, self.ordering_array, self.dist_metric)
+    
     def sample_one(self) -> np.ndarray:
         """Sample one ordering using numba-optimized MCMC"""
         # Start with random permutation of unique elements
         initial_ordering = self.rng.permutation(self.unique_elements).astype(np.int64)
         
-        method_code = {'Pairwise': 0, 'Mallows': 1, 'BT': 2}[self.method]
+        method_code = {'Pairwise': 0, 'Mallows_Tau': 1, 'Mallows_RMJ':2, 'BT': 3}[self.method]
         
         # Prepare dummy parameters for unused methods
         # dummy (correctly typed)
@@ -772,8 +825,6 @@ class MCMC:
             theta_keys = self.theta_keys
             theta_values = self.theta_values
 
-        random_state = self.rng.integers(0, 2**32 - 1)
-
         # Call numba-optimized function
         result = mcmc_sample(
             initial_ordering,
@@ -783,7 +834,7 @@ class MCMC:
             weights_keys, weights_values,
             theta_keys, theta_values,
             self.ordering_array,
-            random_state
+            self.rng
         )
         return result
 

@@ -542,7 +542,7 @@ def generate(
         suffix: Optional suffix for all filenames
         keep_all_cols: Whether to include additional metadata columns (k_j, event_time, affected)
         fixed_biomarker_order: If True, will use the order as in params_file. If False, will randomize the ordering. 
-        noise_std_parameter: the parameter in N(0, N \cdot noise_std_parameter) in experiment 9
+        noise_std_parameter: the parameter in N(0, N * noise_std_parameter) in experiment 9
         
     Returns:
         Dict mapping filenames to dictionaries of biomarker event time orderings

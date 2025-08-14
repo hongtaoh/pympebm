@@ -9,7 +9,6 @@ def metropolis_hastings(
         mp_method: str,
         data_matrix: np.ndarray,
         diseased_arr: np.ndarray,
-        biomarker_names:np.ndarray,
         biomarkers_int:np.ndarray,
         iterations: int,
         n_shuffle: int,
@@ -21,11 +20,12 @@ def metropolis_hastings(
     
     """
     if len(partial_rankings) > 0:
-        allowed_mp_method = {'PL', 'Mallows', 'Pairwise', 'BT'}
+        allowed_mp_method = {'PL', 'Mallows_Tau', 'Mallows_RMJ' ,'Pairwise', 'BT'}
         assert mp_method in allowed_mp_method, f'mp_method must be chosen from {allowed_mp_method}!'
 
+        # no need to sample, so there is no need to use mcmc_iterations, sample_count, pl_best
         if mp_method != 'PL':
-            mpebm_mcmc_sampler = mp_utils.MCMC(ordering_array=partial_rankings, rng=rng, method=mp_method)
+            mpebm_mcmc_sampler = mp_utils.MCMC(ordering_array=partial_rankings, rng=rng, method=mp_method, n_shuffle=n_shuffle)
         else:
             PL = mp_utils.PlackettLuce(ordering_array=partial_rankings, rng=rng)
             
@@ -50,7 +50,7 @@ def metropolis_hastings(
     current_theta_phi = theta_phi_default.copy()
 
     # initialize an ordering and likelihood
-    # Imagine this: the array of biomarker_names stays intact. 
+    # Imagine this: the array of biomarker_int stays intact. 
     # we are randomizing the indices of each of them in the new order
     current_order = rng.permutation(np.arange(1, n_stages))
     current_ln_likelihood = -np.inf
@@ -105,6 +105,7 @@ def metropolis_hastings(
             disease_stages,
             prior_n,    # Weak prior (not data-dependent)
             prior_v,     # Weak prior (not data-dependent)
+            rng,
         )
 
         # NOTE THAT WE CANNOT RECOMPUTE P(K_J) BASED ON THIS NEW THETA PHI.
@@ -116,11 +117,11 @@ def metropolis_hastings(
         )
         if len(partial_rankings) > 0:
             if mp_method == 'Pairwise':
-                new_energy = mpebm_mcmc_sampler.obtain_energy_pairwise(biomarker_names[np.argsort(new_order)])
-            if mp_method == 'Mallows':
-                new_energy = mpebm_mcmc_sampler.obtain_energy_mallows(biomarker_names[np.argsort(new_order)])
+                new_energy = mpebm_mcmc_sampler.pairwise_energy(biomarkers_int[np.argsort(new_order)])
+            if mp_method in ['Mallows_Tau', 'Mallows_RMJ']:
+                new_energy = mpebm_mcmc_sampler.mallows_energy(biomarkers_int[np.argsort(new_order)])
             if mp_method == 'BT':
-                new_energy = mpebm_mcmc_sampler.bt_energy(biomarker_names[np.argsort(new_order)])
+                new_energy = mpebm_mcmc_sampler.bt_energy(biomarkers_int[np.argsort(new_order)])
             if mp_method == 'PL':
                 new_energy = PL.pl_energy(biomarkers_int[np.argsort(new_order)])
             new_ln_likelihood -= new_energy

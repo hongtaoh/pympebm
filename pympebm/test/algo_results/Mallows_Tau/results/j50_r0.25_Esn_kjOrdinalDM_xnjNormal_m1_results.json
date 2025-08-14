@@ -1,0 +1,20 @@
+{
+    "runtime": 7.20475697517395,
+    "kendalls_tau": 0.7435897435897434,
+    "order_with_highest_ll": {
+        "AB": 13,
+        "ADAS": 1,
+        "CDR-SB": 10,
+        "FAQ": 5,
+        "FUS-FCI": 4,
+        "FUS-GMI": 7,
+        "HIP-FCI": 11,
+        "MMSE": 8,
+        "NFL": 9,
+        "P-Tau": 3,
+        "PCC-FCI": 2,
+        "RAVLT-Delay": 6,
+        "T-Tau": 12
+    },
+    "mean_absolute_error": 0.9
+}
