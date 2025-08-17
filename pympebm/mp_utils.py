@@ -241,16 +241,18 @@ def pl_sample_one_random(n:int, unique_elements:np.ndarray, theta:np.ndarray, rn
 
     return res
 
+@njit 
 def pl_sample_one_best(
         unique_elements:np.ndarray,
         current_order:np.ndarray, 
         theta:np.ndarray, 
         mcmc_iterations:int, 
         n_shuffle:int,
-        rng:np.random.Generator
+        random_state:int
         ) -> np.ndarray:
     """Use MCMC to sample PL
     """
+    np.random.seed(random_state)
     # Sample one first 
     current_energy = pl_energy_numba(current_order, unique_elements, theta)
 
@@ -261,7 +263,7 @@ def pl_sample_one_best(
     ## MCMC iterations
     for _ in range(mcmc_iterations):
         new_order = current_order.copy()
-        shuffle_order(arr = new_order, n_shuffle=n_shuffle, rng=rng)
+        shuffle_order(arr = new_order, n_shuffle=n_shuffle)
         new_energy = pl_energy_numba(new_order, unique_elements, theta)
         # Calculate the acceptance probability, α = min(1, P(σ')/P(σ)).
         # P(σ')/P(σ) = exp(-E(σ')) / exp(-E(σ)) = exp(E(σ) - E(σ'))
@@ -357,6 +359,7 @@ class PlackettLuce:
         return pl_sample_one_random(self.n_unique_elements, self.unique_elements, self.theta, self.rng)
     
     def sample_one_best(self) -> np.ndarray:
+        random_state = self.rng.integers(0, 2**32 - 1)
         current_order = self.sample_one_random()
 
         return pl_sample_one_best(
@@ -365,7 +368,7 @@ class PlackettLuce:
             theta=self.theta, 
             mcmc_iterations=self.mcmc_iterations, 
             n_shuffle=self.n_shuffle,
-            rng=self.rng
+            random_state=random_state
         )
         
     def sample_one(self) -> np.ndarray:
@@ -384,29 +387,11 @@ class PlackettLuce:
         rank_matrix = rankings_to_matrix(self.sampled_combined_orderings)
         return kendalls_w(rank_matrix)
 
-@njit
-def normalized_kendalls_tau_distance(r1:np.ndarray, r2:np.ndarray) -> float:
-    """ 
-    Args:
-        r1, r2: array of indices of the same set of items. 
-    """
-    n = len(r1)
-    concordant = 0
-    discordant = 0 
-    for p in range(n-1):
-        for q in range(p+1, n):
-            concordant += ((r1[p] - r1[q]) * (r2[p] - r2[q]) > 0)
-            discordant += ((r1[p] - r1[q]) * (r2[p] - r2[q]) < 0)
-    # discrodant/(concordant + discrodant) is the normalized kendall's tau distance
-    total = concordant + discordant
-    return discordant / total if total > 0 else 0.0
-
 @njit 
 def compute_conflict2(ordering_array:np.ndarray) -> float:
     """
     Args:
         - ordering_array: np array of arrays of the same length (IDs, padded with -1)
-        - dist_metric: choose from 'tau' and 'rmj'
     """
     total = 0
     K = len(ordering_array)
@@ -438,24 +423,26 @@ def compute_conflict2(ordering_array:np.ndarray) -> float:
                 if item in common_items:
                     r2[idx] = item 
                     idx += 1
-
+        
             # get the index of the common items 
             r1 = np.argsort(r1)
             r2 = np.argsort(r2)
 
             total += normalized_kendalls_tau_distance(r1, r2)
- 
     return 2/(K * (K-1)) * total if K > 1 else 0.0
 
-def shuffle_order(arr: np.ndarray, n_shuffle: int, rng:np.random.Generator) -> int:
-    """
-    Numba-compatible shuffle function that actually works.
 
-    Shuffle arr in-place and return another random state
-    
+@njit
+def shuffle_order(arr: np.ndarray, n_shuffle: int) -> None:
+    """
+    Numba-compatible Fisher-Yates shuffle ensuring changes.
+
+    Shuffles arr in-place by performing n_shuffle swaps.
+
     Args:
-        arr: Array to shuffle (modified in-place)  
+        arr: Array to shuffle (modified in-place)
         n_shuffle: Number of swaps to perform
+        random_state: Seed for reproducibility
     """
     if n_shuffle <= 1:
         raise ValueError("n_shuffle must be >= 2 or =0")
@@ -463,15 +450,13 @@ def shuffle_order(arr: np.ndarray, n_shuffle: int, rng:np.random.Generator) -> i
         raise ValueError("n_shuffle cannot exceed array length")
     if n_shuffle == 0:
         return
-
-    indices=rng.choice(len(arr), size=n_shuffle, replace=False)
-    original_indices=indices.copy()
-
-    while True:
-        shuffled_indices=rng.permutation(original_indices)
-        if not np.any(shuffled_indices == original_indices):
-            break
-    arr[indices]=arr[shuffled_indices]
+    original = arr.copy()
+    for i in range(n_shuffle):
+        j = np.random.randint(i, len(arr))
+        arr[i], arr[j] = arr[j], arr[i]
+    # Ensure change if unchanged
+    if np.array_equal(arr, original) and n_shuffle > 0 and len(arr) >= 2:
+        arr[-2], arr[-1] = arr[-1], arr[-2]
 
 @njit 
 def pairwise_energy_numba(ordering, weights_dict_keys, weights_dict_values) -> float:
@@ -538,6 +523,24 @@ def bt_energy_numba(ordering, theta_keys, theta_values) -> float:
     return total_energy
 
 
+@njit
+def normalized_kendalls_tau_distance(r1:np.ndarray, r2:np.ndarray) -> float:
+    """ 
+    Args:
+        r1, r2: array of indices of the same set of items. 
+    """
+    n = len(r1)
+    concordant = 0
+    discordant = 0 
+    for p in range(n-1):
+        for q in range(p+1, n):
+            concordant += ((r1[p] - r1[q]) * (r2[p] - r2[q]) > 0)
+            discordant += ((r1[p] - r1[q]) * (r2[p] - r2[q]) < 0)
+    # discrodant/(concordant + discrodant) is the normalized kendall's tau distance
+    total = concordant + discordant
+    # return discordant / total if total > 0 else 0.0
+    return discordant
+
 @njit 
 def normalized_rmj_distance(central:np.ndarray, ranking:np.ndarray) -> float:
     n = len(central)
@@ -553,7 +556,8 @@ def normalized_rmj_distance(central:np.ndarray, ranking:np.ndarray) -> float:
         if pos_array[a] > pos_array[b]:
             distance += (n - i - 1)
     max_distance = n * (n-1) / 2
-    return distance / max_distance if max_distance > 0 else 0.0 
+    # return distance / max_distance if max_distance > 0 else 0.0 
+    return distance
 
 @njit 
 def mallows_energy_numba(ordering:np.ndarray, ordering_array:np.ndarray, dist_metric:str) -> float:
@@ -592,12 +596,12 @@ def mallows_energy_numba(ordering:np.ndarray, ordering_array:np.ndarray, dist_me
             r1 = np.argsort(r1)
             r2 = np.argsort(r2)
 
-            total_distance += normalized_kendalls_tau_distance(r1, r2)
+            total_distance += normalized_kendalls_tau_distance(r1, r2) ** len(partial_ordering)
         else:
-            total_distance += normalized_rmj_distance(central=r1, ranking=r2)
+            total_distance += normalized_rmj_distance(central=r1, ranking=r2) ** len(partial_ordering)
     return total_distance
 
-
+@njit 
 def mcmc_sample(
         initial_ordering,
         iterations,
@@ -606,7 +610,7 @@ def mcmc_sample(
         weights_keys, weights_values,
         theta_keys, theta_values,
         ordering_array,
-        rng
+        random_state,
 ) -> np.ndarray:
     """
     Runs the Metropolis-Hastings MCMC sampler to get a final ordering.
@@ -614,6 +618,7 @@ def mcmc_sample(
     Returns:
         A numpy array representing the final sampled total ordering.
     """
+    np.random.seed(random_state)
 
     current_order = initial_ordering.copy()
 
@@ -633,7 +638,7 @@ def mcmc_sample(
     # Loop for T iterations
     for _ in range(iterations):
         new_order = current_order.copy()
-        shuffle_order(arr = new_order, n_shuffle=n_shuffle, rng=rng)
+        shuffle_order(arr = new_order, n_shuffle=n_shuffle)
 
         # Calculate new energy
         if method == 0: # Pairwise
@@ -654,7 +659,7 @@ def mcmc_sample(
             prob_accept = min(1.0, np.exp(delta_energy))
 
         # Accept the new ordering with probability α
-        if rng.random() < prob_accept:
+        if np.random.random() < prob_accept:
             current_order=new_order
             current_energy=new_energy
         
@@ -678,7 +683,7 @@ class MCMC:
             mcmc_iterations: int=1000, 
             n_shuffle: int=2,
             rng: np.random.Generator=None,
-            method: str='Mallows',
+            method: str='BT',
             sample_count:int=200,
         ):
         """
@@ -689,7 +694,7 @@ class MCMC:
             iterations: The number of MCMC iterations to perform.
             n_shuffle: The number of items to swap in each proposal step.
                        The paper suggests a swap of 2 items.
-            method: choose from 'Mallows_Tau', 'Mallows_RMJ', 'Pairwise', 'BT'
+            method: choose from 'Mallows', 'Pairwise', 'BT'
         """
         # 1. Calculate the preference weights from the input data.
         self.method=method
@@ -698,6 +703,7 @@ class MCMC:
         self.n_shuffle = n_shuffle 
         self.sample_count = sample_count 
         self.rng = rng 
+
         if method == 'Mallows_Tau':
             self.dist_metric = 'tau'
         if method == 'Mallows_RMJ':
@@ -825,6 +831,8 @@ class MCMC:
             theta_keys = self.theta_keys
             theta_values = self.theta_values
 
+        random_state = self.rng.integers(0, 2**32 - 1)
+
         # Call numba-optimized function
         result = mcmc_sample(
             initial_ordering,
@@ -834,7 +842,7 @@ class MCMC:
             weights_keys, weights_values,
             theta_keys, theta_values,
             self.ordering_array,
-            self.rng
+            random_state
         )
         return result
 

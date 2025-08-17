@@ -71,3 +71,6 @@ To run `gen.py` first. Then to generate partial ordering datasets. `gen_partial.
 
 - 2025-08-11 (V 0.4.0)
     - Add RMJ distance mallows.
+  
+- 2025-08-16 (V 0.4.2)
+    - Try all `njit` in `mp_utils.py`. I want to test it on CHTC.

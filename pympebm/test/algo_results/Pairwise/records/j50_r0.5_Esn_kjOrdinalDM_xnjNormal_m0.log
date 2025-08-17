@@ -1,13 +1,13 @@
-2025-08-14 14:34:09,032 - INFO - Running j50_r0.5_Esn_kjOrdinalDM_xnjNormal_m0
-2025-08-14 14:34:09,035 - INFO - Number of biomarkers: 14
-2025-08-14 14:34:09,403 - INFO - Iteration 500/5000, Acceptance Ratio: 4.80%, Log Likelihood: -1596.7643, 
-2025-08-14 14:34:09,758 - INFO - Iteration 1000/5000, Acceptance Ratio: 3.50%, Log Likelihood: -1599.8456, 
-2025-08-14 14:34:10,140 - INFO - Iteration 1500/5000, Acceptance Ratio: 2.87%, Log Likelihood: -1600.2376, 
-2025-08-14 14:34:10,500 - INFO - Iteration 2000/5000, Acceptance Ratio: 2.70%, Log Likelihood: -1598.7394, 
-2025-08-14 14:34:10,856 - INFO - Iteration 2500/5000, Acceptance Ratio: 2.28%, Log Likelihood: -1598.8939, 
-2025-08-14 14:34:11,212 - INFO - Iteration 3000/5000, Acceptance Ratio: 2.13%, Log Likelihood: -1597.4340, 
-2025-08-14 14:34:11,561 - INFO - Iteration 3500/5000, Acceptance Ratio: 2.11%, Log Likelihood: -1588.1679, 
-2025-08-14 14:34:11,911 - INFO - Iteration 4000/5000, Acceptance Ratio: 1.98%, Log Likelihood: -1583.8458, 
-2025-08-14 14:34:12,263 - INFO - Iteration 4500/5000, Acceptance Ratio: 1.76%, Log Likelihood: -1583.8458, 
-2025-08-14 14:34:12,612 - INFO - Iteration 5000/5000, Acceptance Ratio: 1.62%, Log Likelihood: -1583.3633, 
-2025-08-14 14:34:12,614 - INFO - Results saved to algo_results/Pairwise/results/j50_r0.5_Esn_kjOrdinalDM_xnjNormal_m0_results.json
+2025-08-14 21:18:53,985 - INFO - Running j50_r0.5_Esn_kjOrdinalDM_xnjNormal_m0
+2025-08-14 21:18:53,986 - INFO - Number of biomarkers: 14
+2025-08-14 21:18:54,222 - INFO - Iteration 500/5000, Acceptance Ratio: 10.60%, Log Likelihood: -1485.6263, 
+2025-08-14 21:18:54,460 - INFO - Iteration 1000/5000, Acceptance Ratio: 7.40%, Log Likelihood: -1487.6477, 
+2025-08-14 21:18:54,678 - INFO - Iteration 1500/5000, Acceptance Ratio: 5.20%, Log Likelihood: -1482.2960, 
+2025-08-14 21:18:54,914 - INFO - Iteration 2000/5000, Acceptance Ratio: 4.15%, Log Likelihood: -1483.6148, 
+2025-08-14 21:18:55,131 - INFO - Iteration 2500/5000, Acceptance Ratio: 4.08%, Log Likelihood: -1483.8422, 
+2025-08-14 21:18:55,345 - INFO - Iteration 3000/5000, Acceptance Ratio: 3.47%, Log Likelihood: -1483.5841, 
+2025-08-14 21:18:55,561 - INFO - Iteration 3500/5000, Acceptance Ratio: 3.43%, Log Likelihood: -1481.7877, 
+2025-08-14 21:18:55,776 - INFO - Iteration 4000/5000, Acceptance Ratio: 3.23%, Log Likelihood: -1484.1586, 
+2025-08-14 21:18:56,010 - INFO - Iteration 4500/5000, Acceptance Ratio: 3.27%, Log Likelihood: -1488.6832, 
+2025-08-14 21:18:56,225 - INFO - Iteration 5000/5000, Acceptance Ratio: 3.26%, Log Likelihood: -1483.9913, 
+2025-08-14 21:18:56,227 - INFO - Results saved to algo_results/Pairwise/results/j50_r0.5_Esn_kjOrdinalDM_xnjNormal_m0_results.json

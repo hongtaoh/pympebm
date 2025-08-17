@@ -475,33 +475,6 @@ def shuffle_order(arr: np.ndarray, n_shuffle: int) -> None:
     if np.array_equal(arr, original) and n_shuffle > 0 and len(arr) >= 2:
         arr[-2], arr[-1] = arr[-1], arr[-2]
 
-# @njit
-# def shuffle_order(arr: np.ndarray, n_shuffle: int) -> int:
-#     """
-#     Numba-compatible shuffle function that actually works.
-
-#     Shuffle arr in-place and return another random state
-    
-#     Args:
-#         arr: Array to shuffle (modified in-place)  
-#         n_shuffle: Number of swaps to perform
-#     """
-#     if n_shuffle <= 1:
-#         raise ValueError("n_shuffle must be >= 2 or =0")
-#     if n_shuffle > len(arr):
-#         raise ValueError("n_shuffle cannot exceed array length")
-#     if n_shuffle == 0:
-#         return
-
-#     indices=np.random.choice(len(arr), size=n_shuffle, replace=False)
-#     original_indices=indices.copy()
-
-#     while True:
-#         shuffled_indices=np.random.permutation(original_indices)
-#         if not np.any(shuffled_indices == original_indices):
-#             break
-#     arr[indices]=arr[shuffled_indices]
-
 @njit 
 def pairwise_energy_numba(ordering, weights_dict_keys, weights_dict_values) -> float:
         """
@@ -566,14 +539,32 @@ def bt_energy_numba(ordering, theta_keys, theta_values) -> float:
             total_energy += -np.log(max(prob_ij, 1e-16))
     return total_energy
 
+
 @njit 
-def mallows_energy_numba(ordering:np.ndarray, ordering_array:np.ndarray) -> float:
+def normalized_rmj_distance(central:np.ndarray, ranking:np.ndarray) -> float:
+    n = len(central)
+    max_id = np.max(central) 
+    pos_array = np.empty(max_id + 1, dtype = np.int64)
+    for i in range(n):
+        pos_array[central[i]] = i 
+    
+    distance = 0.0 
+    for i in range(n-1):
+        a = ranking[i]
+        b = ranking[i+1]
+        if pos_array[a] > pos_array[b]:
+            distance += (n - i - 1)
+    max_distance = n * (n-1) / 2
+    return distance / max_distance if max_distance > 0 else 0.0 
+
+@njit 
+def mallows_energy_numba(ordering:np.ndarray, ordering_array:np.ndarray, dist_metric:str) -> float:
     """Calculate the energy of ordering using mallows
     Args:
         ordering: np.ndarray, an 1D array of IDs
         ordering_array: NumbaLists of NumbaList
     """
-    total_tau_distance = 0.0 
+    total_distance = 0.0 
     for partial_ordering in ordering_array:
 
         # find common 
@@ -597,13 +588,16 @@ def mallows_energy_numba(ordering:np.ndarray, ordering_array:np.ndarray) -> floa
             if item in common_items:
                 r2[idx] = item 
                 idx += 1
-    
-        # get the index of the common items 
-        r1 = np.argsort(r1)
-        r2 = np.argsort(r2)
 
-        total_tau_distance += normalized_kendalls_tau_distance(r1, r2)
-    return total_tau_distance
+        if dist_metric == 'tau':
+            # get the index of the common items 
+            r1 = np.argsort(r1)
+            r2 = np.argsort(r2)
+
+            total_distance += normalized_kendalls_tau_distance(r1, r2)
+        else:
+            total_distance += normalized_rmj_distance(central=r1, ranking=r2)
+    return total_distance
 
 @njit 
 def mcmc_sample(
@@ -629,8 +623,10 @@ def mcmc_sample(
     # Calculate initial energy
     if method == 0: # Pairwise
         current_energy= pairwise_energy_numba(current_order, weights_keys, weights_values)
-    elif method == 1: # Mallows
-        current_energy= mallows_energy_numba(current_order, ordering_array)
+    elif method == 1: # Mallows_Tau
+        current_energy= mallows_energy_numba(current_order, ordering_array, dist_metric='tau')
+    elif method == 2: # Mallows_RMJ
+        current_energy = mallows_energy_numba(current_order, ordering_array, dist_metric='rmj')
     else: # BT
         current_energy = bt_energy_numba(current_order, theta_keys, theta_values)
 
@@ -645,8 +641,10 @@ def mcmc_sample(
         # Calculate new energy
         if method == 0: # Pairwise
             new_energy= pairwise_energy_numba(new_order, weights_keys, weights_values)
-        elif method == 1: # Mallows
-            new_energy= mallows_energy_numba(new_order, ordering_array)
+        elif method == 1: # Mallows_Tau
+            new_energy= mallows_energy_numba(new_order, ordering_array, dist_metric='tau')
+        elif method == 2: # Mallows_RMJ
+            new_energy= mallows_energy_numba(new_order, ordering_array, dist_metric='rmj')
         else: # BT
             new_energy = bt_energy_numba(new_order, theta_keys, theta_values)
 
@@ -683,7 +681,7 @@ class MCMC:
             mcmc_iterations: int=1000, 
             n_shuffle: int=2,
             rng: np.random.Generator=None,
-            method: str='Mallows',
+            method: str='BT',
             sample_count:int=200,
         ):
         """
@@ -703,6 +701,11 @@ class MCMC:
         self.n_shuffle = n_shuffle 
         self.sample_count = sample_count 
         self.rng = rng 
+
+        if method == 'Mallows_Tau':
+            self.dist_metric = 'tau'
+        if method == 'Mallows_RMJ':
+            self.dist_metric = 'rmj'
 
         # Get unique elements 
         self.unique_elements = np.unique(
@@ -802,14 +805,14 @@ class MCMC:
         return pairwise_energy_numba(ordering, self.weights_keys, self.weights_values)
     
     def mallows_energy(self, ordering:np.ndarray) -> float:
-        return mallows_energy_numba(ordering, self.ordering_array)
+        return mallows_energy_numba(ordering, self.ordering_array, self.dist_metric)
     
     def sample_one(self) -> np.ndarray:
         """Sample one ordering using numba-optimized MCMC"""
         # Start with random permutation of unique elements
         initial_ordering = self.rng.permutation(self.unique_elements).astype(np.int64)
         
-        method_code = {'Pairwise': 0, 'Mallows': 1, 'BT': 2}[self.method]
+        method_code = {'Pairwise': 0, 'Mallows_Tau': 1, 'Mallows_RMJ':2, 'BT': 3}[self.method]
         
         # Prepare dummy parameters for unused methods
         # dummy (correctly typed)

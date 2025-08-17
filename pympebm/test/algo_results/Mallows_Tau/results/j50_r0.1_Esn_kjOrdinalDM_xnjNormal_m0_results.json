@@ -1,20 +1,20 @@
 {
-    "runtime": 5.049959182739258,
+    "runtime": 3.1190290451049805,
     "kendalls_tau": 0.4871794871794871,
     "order_with_highest_ll": {
-        "AB": 12,
-        "ADAS": 9,
-        "AVLT-Sum": 4,
+        "AB": 10,
+        "ADAS": 13,
+        "AVLT-Sum": 2,
         "CDR-SB": 1,
-        "FUS-FCI": 7,
-        "FUS-GMI": 13,
-        "HIP-FCI": 5,
-        "HIP-GMI": 10,
-        "MMSE": 2,
-        "NFL": 11,
-        "P-Tau": 6,
-        "RAVLT-Delay": 3,
-        "T-Tau": 8
+        "FUS-FCI": 9,
+        "FUS-GMI": 6,
+        "HIP-FCI": 3,
+        "HIP-GMI": 7,
+        "MMSE": 5,
+        "NFL": 8,
+        "P-Tau": 11,
+        "RAVLT-Delay": 4,
+        "T-Tau": 12
     },
-    "mean_absolute_error": 0.48
+    "mean_absolute_error": 1.46
 }
