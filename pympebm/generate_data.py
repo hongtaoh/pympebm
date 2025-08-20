@@ -233,8 +233,8 @@ def generate_measurements_kjContinuous(
         # If with noise, generate noises here
         max_stage = len(shuffled_biomarkers)
         if experiment_name.startswith('xiNearNormalWithNoise'):
-            noise_std = np.sqrt(max_stage * noise_std_parameter)
-            noises = rng.normal(0, noise_std, size=max_stage)
+            noise_std = max_stage * noise_std_parameter
+            noises = rng.normal(loc=0, scale=noise_std, size=max_stage)
         for biomarker_idx, biomarker in enumerate(shuffled_biomarkers):
             event_time = event_time_dict[biomarker] 
             # If with noise, apply noise here
@@ -508,7 +508,7 @@ def generate(
     keep_all_cols: bool = False ,
     fixed_biomarker_order: bool = False,
     noise_std_parameter: float = 0.05,
-    mp_method: Optional[str] = "Mallows", # 'PL', 'BT', 'Pairwise'
+    mp_method: Optional[str] = "BT", # 'PL', 'BT', 'Pairwise', 'Mallows_Tau', 'Mallows_RMJ', 'random'
     sample_count: Optional[int] = 1000 , # how many samples of combined orderings to obtain when calculating certainty
     mcmc_iterations: Optional[int] = 100,
     pl_best:bool=True # in PL framework, sample a random one or through MCMC to get the best one
@@ -611,24 +611,33 @@ def generate(
                         low_length=low_length, high_length=high_length, 
                         high_num=high_num, rng=sub_rng)
                     
-                    combined_ordering = mp_utils.get_combined_order(
-                        padded_partial_orders=padded_ordering_array, 
-                        rng=sub_rng, method=mp_method, mcmc_iterations=mcmc_iterations, pl_best=pl_best)
+                    if mp_method != 'random':
+                        combined_ordering = mp_utils.get_combined_order(
+                            padded_partial_orders=padded_ordering_array, 
+                            rng=sub_rng, method=mp_method, mcmc_iterations=mcmc_iterations, pl_best=pl_best)
+                    else:
+                        combined_ordering = np.array(
+                            sorted(set(item for ordering in padded_ordering_array for item in ordering if item != -1)),
+                            dtype=np.int64
+                        )
+                        rng.shuffle(combined_ordering)
                     
                     new_params = mp_utils.get_final_params(params, combined_ordering, padded_ordering_array, int2str)
-                    if sample_count > 1:
-                        conflict = mp_utils.compute_conflict(padded_ordering_array)
-                        conflict2 = mp_utils.compute_conflict2(padded_ordering_array)
-                    if mp_method == 'PL':
-                        PL = mp_utils.PlackettLuce(ordering_array=padded_ordering_array, rng=sub_rng, 
-                                                   sample_count=sample_count, pl_best=pl_best)
+                    if mp_method != 'random':
                         if sample_count > 1:
-                            certainty = PL.compute_certainty()
-                    else:
-                        mcmc_sampler = mp_utils.MCMC(ordering_array=padded_ordering_array, method=mp_method, 
-                                                     sample_count=sample_count, rng=sub_rng, mcmc_iterations=mcmc_iterations)
-                        if sample_count > 1:
-                            certainty = mcmc_sampler.compute_certainty()
+                            conflict = mp_utils.compute_conflict(padded_ordering_array)
+                            conflict2 = mp_utils.compute_conflict2(padded_ordering_array)
+                        if mp_method == 'PL':
+                            PL = mp_utils.PlackettLuce(ordering_array=padded_ordering_array, rng=sub_rng, 
+                                                    sample_count=sample_count, pl_best=pl_best)
+                            if sample_count > 1:
+                                certainty = PL.compute_certainty()
+                        else:
+                            mcmc_sampler = mp_utils.MCMC(ordering_array=padded_ordering_array, method=mp_method, 
+                                                        sample_count=sample_count, rng=sub_rng, mcmc_iterations=mcmc_iterations)
+                            if sample_count > 1:
+                                certainty = mcmc_sampler.compute_certainty()
+                    true_order_and_stages_dict[filename]['mp_method'] = mp_method
                     true_order_and_stages_dict[filename]['n_partial_rankings'] = len(padded_ordering_array)
                     true_order_and_stages_dict[filename]['ordering_array'] = padded_ordering_array
                     if sample_count > 1:

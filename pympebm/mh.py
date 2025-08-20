@@ -6,6 +6,7 @@ import pympebm.mp_utils as mp_utils
 
 def metropolis_hastings(
         partial_rankings: np.ndarray,
+        theta_phi_use_matrix:np.ndarray,
         mp_method: str,
         data_matrix: np.ndarray,
         diseased_arr: np.ndarray,
@@ -22,6 +23,18 @@ def metropolis_hastings(
     if len(partial_rankings) > 0:
         allowed_mp_method = {'PL', 'Mallows_Tau', 'Mallows_RMJ' ,'Pairwise', 'BT'}
         assert mp_method in allowed_mp_method, f'mp_method must be chosen from {allowed_mp_method}!'
+
+        # flatten and filter out -1
+        # Will become 1-D array
+        flat = partial_rankings[partial_rankings != -1]
+
+        # get unique values and their counts
+        unique, counts = np.unique(flat, return_counts=True)
+
+        # select those that appeared more than once
+        overlapping_biomarkers_int = unique[counts > 1]
+        # the indices of biomarkers that appeared more than once in partial rankings.
+        more_than_once_indices = np.array([np.where(biomarkers_int == x)[0][0] for x in overlapping_biomarkers_int])
 
         # no need to sample, so there is no need to use mcmc_iterations, sample_count, pl_best
         if mp_method != 'PL':
@@ -46,6 +59,13 @@ def metropolis_hastings(
     # N * 4 matrix, cols: theta_mean, theta_std, phi_mean, phi_std
     theta_phi_default = utils.get_initial_theta_phi_estimates(
         data_matrix, non_diseased_ids, diseased_ids, prior_n, prior_v, rng=rng)
+    
+    if len(theta_phi_use_matrix)>0:
+        for idx in more_than_once_indices:
+            # if a biomarker appears more than once, do not use the phi params obtained from individual disease data
+            theta_phi_use_matrix[idx][0] = theta_phi_default[idx][0]
+            theta_phi_use_matrix[idx][1] = theta_phi_default[idx][1]
+        theta_phi_default = theta_phi_use_matrix
 
     current_theta_phi = theta_phi_default.copy()
 
@@ -69,6 +89,7 @@ def metropolis_hastings(
     log_likelihoods = []
 
     for iteration in range(iterations):
+        random_state = rng.integers(0, 2**32 - 1)
         log_likelihoods.append(current_ln_likelihood)
 
         new_order = current_order.copy()
@@ -105,7 +126,7 @@ def metropolis_hastings(
             disease_stages,
             prior_n,    # Weak prior (not data-dependent)
             prior_v,     # Weak prior (not data-dependent)
-            rng,
+            random_state,
         )
 
         # NOTE THAT WE CANNOT RECOMPUTE P(K_J) BASED ON THIS NEW THETA PHI.

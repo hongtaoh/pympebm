@@ -1,4 +1,52 @@
 {
+  "CSFABETA": {
+      "theta_mean": 283.09151432999704,
+      "theta_std": 130.67924347883755,
+      "phi_mean": 560.2743893141175,
+      "phi_std": 273.37437425078485
+  },
+  "CSFPTAU": {
+      "theta_mean": 66.75625000068302,
+      "theta_std": 38.40123588021043,
+      "phi_mean": 39.79849740932642,
+      "phi_std": 20.057615362042704
+  },
+  "CSFTTAU": {
+      "theta_mean": 516.2340540540541,
+      "theta_std": 366.07673120099815,
+      "phi_mean": 213.30148936170207,
+      "phi_std": 198.59377150277575
+  },
+  "EntorhinalNorm": {
+      "theta_mean": 0.0199999819999982,
+      "theta_std": 2.210751726811212e-152,
+      "phi_mean": 0.008704243594176956,
+      "phi_std": 0.006030259750259703
+  },
+  "PHC_EXF": {
+      "theta_mean": -0.4475589112094132,
+      "theta_std": 0.7914553230952741,
+      "phi_mean": 0.8099102711418686,
+      "phi_std": 0.5640509865303649
+  },
+  "PHC_LAN": {
+      "theta_mean": -0.436565431599901,
+      "theta_std": 0.6451057452426804,
+      "phi_mean": 1.0244599919303843,
+      "phi_std": 0.5843691351480654
+  },
+  "PHC_MEM": {
+      "theta_mean": -0.7385908526208154,
+      "theta_std": 0.6208406341132668,
+      "phi_mean": 0.9381603300457998,
+      "phi_std": 0.5287738737171721
+  },
+  "VentricleNorm": {
+      "theta_mean": 0.19999999999999993,
+      "theta_std": 1.1331166295920986e-17,
+      "phi_mean": 0.05956515923993326,
+      "phi_std": 0.07529027448838055
+  },
   "MMSE": {
     "theta_mean": 22,
     "theta_std": 2.6666666666666665,
@@ -10,18 +58,6 @@
     "theta_std": 4.0,
     "phi_mean": 6,
     "phi_std": 1.3333333333333333
-  },
-  "AB": {
-    "theta_mean": 150,
-    "theta_std": 16.666666666666668,
-    "phi_mean": 250,
-    "phi_std": 50.0
-  },
-  "P-Tau": {
-    "theta_mean": 50,
-    "theta_std": 33.333333333333336,
-    "phi_mean": 25,
-    "phi_std": 16.666666666666668
   },
   "HIP-FCI": {
     "theta_mean": 5,
@@ -58,35 +94,5 @@
     "theta_std": 6.0,
     "phi_mean": 10,
     "phi_std": 3.3333333333333335
-  },
-  "CDR-SB": {
-    "theta_mean": 4.5,
-    "theta_std": 1.5,
-    "phi_mean": 2.0,
-    "phi_std": 0.8
-  },
-  "FAQ": {
-    "theta_mean": 10.0,
-    "theta_std": 3.0,
-    "phi_mean": 5.0,
-    "phi_std": 1.2
-  },
-  "NFL": {
-    "theta_mean": 30.0,
-    "theta_std": 10.0,
-    "phi_mean": 20.0,
-    "phi_std": 5.0
-  },
-  "T-Tau": {
-    "theta_mean": 80.0,
-    "theta_std": 20.0,
-    "phi_mean": 40.0,
-    "phi_std": 12.0
-  },
-  "RAVLT-Delay": {
-    "theta_mean": 15.0,
-    "theta_std": 5.0,
-    "phi_mean": 25.0,
-    "phi_std": 7.0
   }
 }

@@ -6,6 +6,7 @@ from typing import List, Dict, Optional, Union
 from scipy.stats import kendalltau
 import time
 import numpy as np
+import sys 
 from sklearn.metrics import mean_absolute_error
 
 # Import utility functions
@@ -21,6 +22,7 @@ def run_mpebm(
     data_file: str,
     output_dir: Optional[str]=None,
     partial_rankings:Optional[np.ndarray] = np.array([]),
+    theta_phi_use:Optional[Dict[str, float]] = {},
     bm2int: Optional[Dict[str, int]] = dict(), 
     mp_method:Optional[str] = None,
     output_folder: Optional[str] = None,
@@ -97,18 +99,29 @@ def run_mpebm(
         heatmap_folder = os.path.join(output_dir, "heatmaps")
         traceplot_folder = os.path.join(output_dir, "traceplots")
         results_folder = os.path.join(output_dir, "results")
-        logs_folder = os.path.join(output_dir, "records")
+        # logs_folder = os.path.join(output_dir, "records")
 
         if not skip_heatmap:
             os.makedirs(heatmap_folder, exist_ok=True)
         if not skip_traceplot:
             os.makedirs(traceplot_folder, exist_ok=True)
         os.makedirs(results_folder, exist_ok=True)
-        os.makedirs(logs_folder, exist_ok=True)
+        # os.makedirs(logs_folder, exist_ok=True)
 
-        # Finally set up logging
-        log_file = os.path.join(logs_folder, f"{fname_prefix}{fname}.log")
-        setup_logging(log_file)
+        # # Finally set up logging
+        # log_file = os.path.join(logs_folder, f"{fname_prefix}{fname}.log")
+        # setup_logging(log_file)
+
+
+        # Finally set up logging (console only, no file)
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(message)s",
+            handlers=[logging.StreamHandler(sys.stdout)],
+            force=True
+        )
+
+
 
     # Log the start of the run
     logging.info(f"Running {fname}")
@@ -134,6 +147,19 @@ def run_mpebm(
     n_stages = n_biomarkers + 1
     logging.info(f"Number of biomarkers: {n_biomarkers}")
 
+    theta_phi_use_matrix = np.array([])
+    if len(theta_phi_use)>0:
+        # Convert theta_phi_use from dict to np.ndarray, and according to the order in biomarker_names
+        theta_phi_use_matrix = np.zeros((n_biomarkers, 4), dtype=np.float64)
+        for idx, bm_str in enumerate(biomarker_names):
+            res = theta_phi_use[bm_str]
+            theta_phi_use_matrix[idx] = np.array([
+                res['theta_mean'],
+                res['theta_std'],
+                res['phi_mean'],
+                res['phi_std']
+            ], dtype=np.float64)
+
     n_participants = len(data.participant.unique())
 
     df = data.copy()
@@ -155,7 +181,7 @@ def run_mpebm(
     # Run the Metropolis-Hastings algorithm
     try:
         accepted_orders, log_likelihoods, final_theta_phi, final_stage_post, current_pi = metropolis_hastings(
-            partial_rankings=partial_rankings, mp_method=mp_method,
+            partial_rankings=partial_rankings, mp_method=mp_method, theta_phi_use_matrix = theta_phi_use_matrix, 
             data_matrix=data_matrix, diseased_arr=diseased_arr, biomarkers_int=biomarkers_int,
             iterations = n_iter, n_shuffle = n_shuffle, prior_n=prior_n, prior_v=prior_v, rng=rng
         )
@@ -174,6 +200,7 @@ def run_mpebm(
         # Sort both dicts by the key to make sure they are comparable
         true_order_dict = dict(sorted(true_order_dict.items()))
         tau, p_value = kendalltau(order_with_highest_ll, list(true_order_dict.values()))
+        tau = (1-tau)*0.5
     else:
         tau, p_value = None, None
 
@@ -228,20 +255,21 @@ def run_mpebm(
         true_order_result = {k: int(v) for k, v in true_order_dict.items()}
     
     final_stage_post_dict = {}
-    if save_results and save_stage_post:
+    if save_details or save_stage_post:
         for p in range(n_participants):
             final_stage_post_dict[p] = final_stage_post[p].tolist()
     
     final_theta_phi_dict = {}
-    if save_results and save_theta_phi:
-        for bm_idx, bm in enumerate(biomarker_names):
-            params = final_theta_phi[bm_idx]
-            final_theta_phi_dict[bm] = {
-                'theta_mean': params[0],
-                'theta_std': params[1],
-                'phi_mean': params[2],
-                'phi_std': params[3]
+    if save_details or save_theta_phi:
+        for idx, bm_str in enumerate(biomarker_names):
+            params = final_theta_phi[idx]
+            final_theta_phi_dict[bm_str] = {
+                'theta_mean': float(params[0]),
+                'theta_std': float(params[1]),
+                'phi_mean': float(params[2]),
+                'phi_std': float(params[3])
             }
+
     end_time = time.time()
     if save_details:
         results = {
@@ -271,6 +299,7 @@ def run_mpebm(
             "kendalls_tau": tau,
             "order_with_highest_ll": {k: int(v) for k, v in zip(biomarker_names, order_with_highest_ll)},
             "mean_absolute_error": mae,
+            "final_theta_phi_params": final_theta_phi_dict
         }
     
     if save_results:
@@ -283,10 +312,10 @@ def run_mpebm(
             raise
         logging.info(f"Results saved to {results_folder}/{fname_prefix}{fname}_results.json")
 
-    # Clean up logging handlers
-    logger = logging.getLogger()
-    for handler in logger.handlers[:]:
-        handler.close()
-        logger.removeHandler(handler)
+    # # Clean up logging handlers
+    # logger = logging.getLogger()
+    # for handler in logger.handlers[:]:
+    #     handler.close()
+    #     logger.removeHandler(handler)
 
     return results

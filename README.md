@@ -74,3 +74,20 @@ To run `gen.py` first. Then to generate partial ordering datasets. `gen_partial.
   
 - 2025-08-16 (V 0.4.2)
     - Try all `njit` in `mp_utils.py`. I want to test it on CHTC.
+
+- 2025-08-17 (V 0.4.4)
+    - I know using `np.random` is not helpful in `shuffle_order` func. Change back to the slow version.
+
+- 2025-08-18 (V 0.4.10)
+    - Try to use rng in func of `obtain_affected_and_non_clusters`.  
+    - In mallows, use BT for central ranking sampling. 
+    - Added `theta = 100` in mallows.
+    - Added `mp_method = 'random'` in `generate_data.py`. 
+    - Remobed `recodes` folder when running mp-ebm.
+
+- 2025-08-19 (V 0.4.19)
+    - Corrected an error: in data generation, for experiment 9, the noise_std should be max_length * noise_std_parameter rather than its square root. This is imprtant because after using square root, the noise_std in fact become larger, not smaller. For example, in our example where N = 10, the noise_std should be N*0.05 = 0.5, but after square root, it becomes 0.7. If N = 4, then std should be 02, but becomes 0.45 after square root. 
+    - Added the `temperature` parameter for mallows sampling.
+    - Reuse params inferred from individual diseases.
+    - Used biomarkers and theta/phi params obtained from NACC data analysis.
+
